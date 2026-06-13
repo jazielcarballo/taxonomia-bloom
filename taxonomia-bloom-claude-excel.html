@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Taxonomía de Bloom · Claude + Excel</title>
+<style>
+  :root{
+    --cream:#FAF6EE;
+    --paper:#FFFDF8;
+    --ink:#2A2520;
+    --ink-soft:#6B6258;
+    --line:#E4DCCE;
+    --excel:#107C41;
+    --excel-soft:#E6F2EB;
+    /* Niveles: de la base (verde Excel) a la cima (terracota creativa) */
+    --n1:#0F6E3C;
+    --n2:#2E8B57;
+    --n3:#7A9A3D;
+    --n4:#C8922A;
+    --n5:#C9692F;
+    --n6:#B6452C;
+    --radius:10px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--cream);
+    color:var(--ink);
+    font-family:"Segoe UI", system-ui, -apple-system, sans-serif;
+    line-height:1.6;
+  }
+  .serif{font-family:Georgia, "Times New Roman", serif}
+  .mono{font-family:"Cascadia Code", Consolas, "Courier New", monospace}
+
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+
+  /* ---------- Header ---------- */
+  header{
+    border-bottom:1px solid var(--line);
+    background:var(--paper);
+  }
+  .topbar{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:18px 0;font-size:.85rem;color:var(--ink-soft);
+  }
+  .badge{
+    display:inline-flex;align-items:center;gap:8px;
+    background:var(--excel-soft);color:var(--excel);
+    border:1px solid #BFDCCB;border-radius:999px;
+    padding:4px 14px;font-weight:600;font-size:.78rem;letter-spacing:.04em;
+  }
+  .badge::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--excel)}
+
+  .hero{padding:56px 0 48px;text-align:center}
+  .hero .eyebrow{
+    font-size:.8rem;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--ink-soft);margin-bottom:14px;
+  }
+  .hero h1{
+    font-size:clamp(2rem, 5vw, 3.2rem);
+    font-weight:400;line-height:1.15;max-width:760px;margin:0 auto 18px;
+  }
+  .hero h1 em{font-style:italic;color:var(--excel)}
+  .hero p.lead{
+    max-width:640px;margin:0 auto;color:var(--ink-soft);font-size:1.05rem;
+  }
+  .formula-bar{
+    max-width:560px;margin:28px auto 0;
+    background:#fff;border:1px solid var(--line);border-radius:8px;
+    display:flex;align-items:stretch;overflow:hidden;
+    box-shadow:0 1px 3px rgba(42,37,32,.06);
+    text-align:left;font-size:.9rem;
+  }
+  .formula-bar .fx{
+    display:flex;align-items:center;padding:10px 14px;
+    border-right:1px solid var(--line);color:var(--excel);
+    font-weight:700;font-style:italic;font-family:Georgia, serif;
+  }
+  .formula-bar .formula{padding:10px 14px;color:var(--ink)}
+  .formula-bar .formula span{color:var(--excel);font-weight:600}
+
+  /* ---------- Pirámide ---------- */
+  .pyramid-section{padding:64px 0 32px}
+  .section-title{
+    text-align:center;margin-bottom:8px;font-weight:400;
+    font-size:clamp(1.4rem,3vw,1.9rem);
+  }
+  .section-sub{
+    text-align:center;color:var(--ink-soft);font-size:.95rem;
+    max-width:520px;margin:0 auto 40px;
+  }
+
+  .pyramid{
+    display:flex;flex-direction:column;align-items:center;gap:6px;
+    max-width:680px;margin:0 auto;
+  }
+  .level{
+    border:none;cursor:pointer;
+    color:#fff;font-family:Georgia, serif;
+    display:flex;align-items:center;justify-content:center;gap:10px;
+    padding:14px 10px;border-radius:6px;
+    font-size:clamp(.85rem, 2vw, 1.05rem);
+    letter-spacing:.03em;
+    transition:transform .18s ease, box-shadow .18s ease, filter .18s ease;
+    position:relative;
+  }
+  .level .num{
+    font-family:"Segoe UI", sans-serif;font-size:.7rem;font-weight:700;
+    background:rgba(255,255,255,.22);border-radius:4px;padding:2px 7px;
+    letter-spacing:.08em;
+  }
+  .level:hover{transform:translateY(-3px);box-shadow:0 8px 18px rgba(42,37,32,.18);filter:brightness(1.06)}
+  .level:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+  .level.active{
+    box-shadow:0 8px 22px rgba(42,37,32,.25);
+    transform:translateY(-3px) scale(1.02);
+  }
+  .level.active::after{
+    content:"";position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);
+    border:8px solid transparent;border-top-color:currentColor;
+  }
+  /* anchos escalonados */
+  .level[data-level="6"]{width:34%;background:var(--n6);color:var(--n6);}
+  .level[data-level="5"]{width:46%;background:var(--n5);color:var(--n5);}
+  .level[data-level="4"]{width:58%;background:var(--n4);color:var(--n4);}
+  .level[data-level="3"]{width:70%;background:var(--n3);color:var(--n3);}
+  .level[data-level="2"]{width:84%;background:var(--n2);color:var(--n2);}
+  .level[data-level="1"]{width:100%;background:var(--n1);color:var(--n1);}
+  .level span.label{color:#fff}
+  .pyramid-hint{
+    text-align:center;margin-top:26px;color:var(--ink-soft);
+    font-size:.85rem;font-style:italic;font-family:Georgia, serif;
+  }
+
+  /* ---------- Panel de detalle ---------- */
+  .detail{
+    max-width:880px;margin:36px auto 0;
+    background:var(--paper);border:1px solid var(--line);
+    border-radius:var(--radius);overflow:hidden;
+    box-shadow:0 2px 10px rgba(42,37,32,.06);
+    display:none;
+    animation:fadeUp .35s ease;
+  }
+  .detail.visible{display:block}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){
+    .detail{animation:none}
+    .level,.level:hover{transition:none;transform:none}
+  }
+  .detail-head{
+    padding:26px 32px 20px;color:#fff;
+    display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 16px;
+  }
+  .detail-head h3{font-family:Georgia, serif;font-weight:400;font-size:1.6rem}
+  .detail-head .verb-tags{font-size:.82rem;opacity:.92}
+  .detail-desc{
+    padding:20px 32px;border-bottom:1px solid var(--line);
+    color:var(--ink-soft);font-size:.98rem;
+  }
+  .examples{padding:10px 32px 28px}
+  .example{
+    border-bottom:1px solid var(--line);padding:20px 0;
+  }
+  .example:last-child{border-bottom:none}
+  .example h4{
+    font-family:Georgia, serif;font-weight:600;font-size:1.05rem;margin-bottom:6px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .example h4::before{
+    content:attr(data-cell);
+    font-family:"Cascadia Code", Consolas, monospace;font-size:.68rem;font-weight:700;
+    color:var(--excel);background:var(--excel-soft);
+    border:1px solid #BFDCCB;border-radius:4px;padding:2px 6px;letter-spacing:.05em;
+  }
+  .example p{color:var(--ink-soft);font-size:.93rem;margin-bottom:10px}
+  .prompt{
+    background:#fff;border:1px solid var(--line);border-left:4px solid var(--excel);
+    border-radius:6px;padding:12px 16px;font-size:.86rem;color:var(--ink);
+  }
+  .prompt b{color:var(--excel);font-weight:700;font-size:.74rem;letter-spacing:.08em;
+    display:block;margin-bottom:4px;font-family:"Segoe UI",sans-serif}
+
+  /* ---------- Footer ---------- */
+  footer{
+    margin-top:72px;border-top:1px solid var(--line);
+    background:var(--paper);padding:34px 0;text-align:center;
+    color:var(--ink-soft);font-size:.85rem;
+  }
+  footer .serif{font-size:1rem;color:var(--ink);margin-bottom:6px}
+
+  @media (max-width:560px){
+    .detail-head,.detail-desc,.examples{padding-left:20px;padding-right:20px}
+    .level{padding:11px 6px}
+    .level .num{display:none}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap topbar">
+    <span class="serif" style="font-size:1.05rem;color:var(--ink)">Taxonomía de Bloom</span>
+    <span class="badge">Claude + Excel</span>
+  </div>
+  <div class="wrap hero">
+    <p class="eyebrow">Marco pedagógico · IA aplicada</p>
+    <h1 class="serif">Seis niveles para dominar <em>Claude en Excel</em>, del recuerdo a la creación</h1>
+    <p class="lead">La Taxonomía de Bloom organiza el aprendizaje en niveles cognitivos progresivos. Aquí la aplicamos al trabajo con hojas de cálculo asistido por IA: cada nivel muestra qué puedes pedirle a Claude y cómo formular el prompt.</p>
+    <div class="formula-bar mono">
+      <span class="fx">fx</span>
+      <span class="formula">=<span>APRENDER</span>(Bloom, Claude, Excel)</span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="pyramid-section wrap">
+    <h2 class="section-title serif">La pirámide</h2>
+    <p class="section-sub">Haz clic en cualquier nivel para ver ejemplos concretos con prompts listos para usar.</p>
+
+    <div class="pyramid" role="tablist" aria-label="Niveles de la Taxonomía de Bloom">
+      <button class="level" data-level="6" role="tab" aria-controls="panel" aria-selected="false"><span class="num">6</span><span class="label">Crear</span></button>
+      <button class="level" data-level="5" role="tab" aria-controls="panel" aria-selected="false"><span class="num">5</span><span class="label">Evaluar</span></button>
+      <button class="level" data-level="4" role="tab" aria-controls="panel" aria-selected="false"><span class="num">4</span><span class="label">Analizar</span></button>
+      <button class="level" data-level="3" role="tab" aria-controls="panel" aria-selected="false"><span class="num">3</span><span class="label">Aplicar</span></button>
+      <button class="level" data-level="2" role="tab" aria-controls="panel" aria-selected="false"><span class="num">2</span><span class="label">Comprender</span></button>
+      <button class="level" data-level="1" role="tab" aria-controls="panel" aria-selected="false"><span class="num">1</span><span class="label">Recordar</span></button>
+    </div>
+    <p class="pyramid-hint">— selecciona un nivel para explorarlo —</p>
+
+    <article class="detail" id="panel" role="tabpanel" aria-live="polite">
+      <div class="detail-head" id="dHead">
+        <h3 id="dTitle"></h3>
+        <span class="verb-tags" id="dVerbs"></span>
+      </div>
+      <p class="detail-desc" id="dDesc"></p>
+      <div class="examples" id="dExamples"></div>
+    </article>
+  </section>
+</main>
+
+<footer>
+  <p class="serif">Recordar · Comprender · Aplicar · Analizar · Evaluar · Crear</p>
+  <p>Una guía visual para integrar IA en el trabajo con hojas de cálculo.</p>
+</footer>
+
+<script>
+const DATA = {
+  1:{
+    title:"Recordar", color:"var(--n1)",
+    verbs:"reconocer · listar · identificar · nombrar",
+    desc:"El punto de partida: usar Claude como referencia inmediata para recuperar funciones, sintaxis y conceptos básicos de Excel sin salir de tu flujo de trabajo.",
+    examples:[
+      {cell:"A1", t:"Consultar la sintaxis de una función",
+       p:"En lugar de buscar en la ayuda de Excel, pregunta directamente a Claude qué hace una función y cuáles son sus argumentos.",
+       prompt:"¿Cuál es la sintaxis de BUSCARV y qué significa cada argumento? Dame un ejemplo sencillo."},
+      {cell:"A2", t:"Listar funciones por categoría",
+       p:"Pide un inventario rápido de funciones útiles para un tipo de tarea específica.",
+       prompt:"Lista las 10 funciones de Excel más usadas para trabajar con fechas, con una línea de descripción cada una."},
+      {cell:"A3", t:"Identificar atajos de teclado",
+       p:"Recupera atajos que aceleren tareas repetitivas en tu hoja.",
+       prompt:"¿Qué atajos de teclado de Excel sirven para seleccionar, copiar formatos y moverme rápido entre hojas?"}
+    ]
+  },
+  2:{
+    title:"Comprender", color:"var(--n2)",
+    verbs:"explicar · interpretar · resumir · parafrasear",
+    desc:"Pasar de saber que algo existe a entender cómo y por qué funciona: Claude traduce fórmulas, datos y estructuras a lenguaje claro.",
+    examples:[
+      {cell:"B1", t:"Explicar una fórmula heredada",
+       p:"Pega esa fórmula intimidante que dejó un excolega y pide una explicación paso a paso.",
+       prompt:"Explícame paso a paso qué hace esta fórmula y en qué orden se evalúa: =SI.ERROR(INDICE(B:B,COINCIDIR(E2,A:A,0)),\"No encontrado\")"},
+      {cell:"B2", t:"Interpretar los datos de una hoja",
+       p:"Sube o describe tu archivo y pide a Claude que resuma qué contiene y cómo está organizado.",
+       prompt:"Te comparto mi archivo de ventas. Resume qué contiene cada hoja, qué representan las columnas y qué relación hay entre ellas."},
+      {cell:"B3", t:"Traducir un gráfico a conclusiones",
+       p:"Convierte una visualización en una lectura en lenguaje natural para alguien no técnico.",
+       prompt:"Con base en esta tabla de ventas mensuales, explícame en 3 frases qué tendencia muestra, como si se lo contara a alguien sin experiencia en datos."}
+    ]
+  },
+  3:{
+    title:"Aplicar", color:"var(--n3)",
+    verbs:"usar · ejecutar · implementar · resolver",
+    desc:"Poner el conocimiento en acción: Claude genera fórmulas, limpia datos y construye soluciones para problemas concretos de tu hoja.",
+    examples:[
+      {cell:"C1", t:"Generar la fórmula para tu caso",
+       p:"Describe el problema en lenguaje natural y obtén la fórmula exacta para tu estructura de datos.",
+       prompt:"En la columna A tengo nombres completos como \"García López, María\". Dame una fórmula que extraiga solo el primer apellido en la columna B."},
+      {cell:"C2", t:"Limpiar datos desordenados",
+       p:"Pide un plan de limpieza aplicable: duplicados, espacios, formatos inconsistentes.",
+       prompt:"Mi columna de teléfonos mezcla formatos: 999-123-4567, (999) 1234567, 9991234567. Dame una fórmula o pasos para estandarizarlos a 10 dígitos seguidos."},
+      {cell:"C3", t:"Construir una tabla dinámica guiada",
+       p:"Obtén instrucciones específicas para resumir tus datos exactamente como los necesitas.",
+       prompt:"Tengo columnas: Fecha, Vendedor, Producto, Monto. Guíame paso a paso para crear una tabla dinámica que muestre ventas por vendedor y por mes."}
+    ]
+  },
+  4:{
+    title:"Analizar", color:"var(--n4)",
+    verbs:"comparar · descomponer · relacionar · examinar",
+    desc:"Ir más allá del dato individual: detectar patrones, anomalías y relaciones que no son evidentes a simple vista.",
+    examples:[
+      {cell:"D1", t:"Detectar anomalías en tus datos",
+       p:"Pide a Claude que examine tu conjunto de datos en busca de valores atípicos o inconsistencias.",
+       prompt:"Analiza esta tabla de gastos mensuales e identifica valores atípicos o meses que se desvíen del patrón. Explica por qué cada uno llama la atención."},
+      {cell:"D2", t:"Comparar escenarios o periodos",
+       p:"Contrasta dos conjuntos de datos y obtén las diferencias relevantes, no solo los números.",
+       prompt:"Compara las ventas del primer trimestre 2025 vs. 2026 de esta tabla. ¿Qué productos crecieron, cuáles cayeron y qué hipótesis explicarían los cambios?"},
+      {cell:"D3", t:"Descomponer un modelo complejo",
+       p:"Entiende cómo se conectan las piezas de un libro con múltiples hojas y dependencias.",
+       prompt:"Este libro tiene hojas de Supuestos, Ingresos, Costos y Resumen. Mapea cómo fluyen los cálculos entre hojas y señala las celdas críticas del modelo."}
+    ]
+  },
+  5:{
+    title:"Evaluar", color:"var(--n5)",
+    verbs:"juzgar · validar · auditar · justificar",
+    desc:"Ejercer criterio: usar Claude como segundo par de ojos para auditar fórmulas, cuestionar supuestos y elegir entre alternativas con argumentos.",
+    examples:[
+      {cell:"E1", t:"Auditar una hoja en busca de errores",
+       p:"Somete tu hoja a revisión: referencias rotas, fórmulas frágiles, errores lógicos.",
+       prompt:"Revisa estas fórmulas de mi hoja de nómina y dime cuáles son frágiles o propensas a error (referencias absolutas faltantes, divisiones sin control de cero, rangos fijos que no escalan)."},
+      {cell:"E2", t:"Validar los supuestos de un modelo",
+       p:"Pide una crítica honesta de las premisas detrás de tus proyecciones.",
+       prompt:"Mi proyección asume crecimiento mensual del 8% sostenido por 24 meses. Critica este supuesto: ¿qué riesgos ignora y qué escenarios alternativos debería modelar?"},
+      {cell:"E3", t:"Elegir entre dos enfoques con argumentos",
+       p:"Contrasta soluciones técnicas y decide con criterios explícitos, no por costumbre.",
+       prompt:"Para cruzar datos entre dos tablas, ¿me conviene BUSCARV, INDICE+COINCIDIR o BUSCARX? Compara rendimiento, legibilidad y mantenimiento para una tabla de 50,000 filas."}
+    ]
+  },
+  6:{
+    title:"Crear", color:"var(--n6)",
+    verbs:"diseñar · construir · producir · automatizar",
+    desc:"La cima de la pirámide: combinar todo lo anterior para construir soluciones nuevas — dashboards, modelos y flujos automatizados que antes no existían.",
+    examples:[
+      {cell:"F1", t:"Diseñar un dashboard desde cero",
+       p:"Co-diseña con Claude la estructura completa de un tablero ejecutivo: KPIs, layout y fórmulas de soporte.",
+       prompt:"Diseña un dashboard en Excel para una agencia de viajes en Mérida: define los 6 KPIs clave, la estructura de hojas, las fórmulas de cada indicador y qué gráficos usar."},
+      {cell:"F2", t:"Construir un modelo financiero completo",
+       p:"Crea un modelo nuevo con hojas de supuestos, cálculos y resumen, listo para iterar.",
+       prompt:"Construye conmigo un modelo de punto de equilibrio para un restaurante: hoja de supuestos editables, hoja de cálculo de costos fijos/variables y un resumen con análisis de sensibilidad."},
+      {cell:"F3", t:"Automatizar un reporte recurrente",
+       p:"Convierte un proceso manual mensual en un flujo semi-automático con plantillas y macros.",
+       prompt:"Cada mes consolido 5 archivos de sucursales en un reporte. Diseña una plantilla con Power Query o macros VBA que automatice la consolidación, y explícame cómo implementarla."}
+    ]
+  }
+};
+
+const panel = document.getElementById('panel');
+const dHead = document.getElementById('dHead');
+const dTitle = document.getElementById('dTitle');
+const dVerbs = document.getElementById('dVerbs');
+const dDesc = document.getElementById('dDesc');
+const dExamples = document.getElementById('dExamples');
+const levels = document.querySelectorAll('.level');
+
+levels.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const n = btn.dataset.level;
+    const d = DATA[n];
+
+    levels.forEach(b => {b.classList.remove('active'); b.setAttribute('aria-selected','false');});
+    btn.classList.add('active');
+    btn.setAttribute('aria-selected','true');
+
+    dHead.style.background = d.color;
+    dTitle.textContent = n + '. ' + d.title;
+    dVerbs.textContent = d.verbs;
+    dDesc.textContent = d.desc;
+    dExamples.innerHTML = d.examples.map(ex => `
+      <div class="example">
+        <h4 data-cell="${ex.cell}">${ex.t}</h4>
+        <p>${ex.p}</p>
+        <div class="prompt"><b>PROMPT PARA CLAUDE</b>${ex.prompt}</div>
+      </div>`).join('');
+
+    panel.classList.add('visible');
+    panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+  });
+});
+</script>
+</body>
+</html>
